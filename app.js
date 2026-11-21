@@ -47,14 +47,27 @@ function login(m){
       <label class="lg-l" for="lg-pw">Passwort</label>
       <input id="lg-pw" type="password" autocomplete="current-password" required autofocus>
       <label class="lg-rem"><input type="checkbox" checked data-rem> Auf diesem Gerät angemeldet bleiben</label>
-      <button class="btn big" type="submit">Öffnen</button><p class="lg-err" role="alert"></p></form></div>`;
+      <button class="btn big" type="submit">Öffnen</button><p class="lg-err" role="alert"></p>${STATS ? `<p class="lg-note">Wir zählen anonym und ohne Cookies, wie oft die Seite genutzt wird. Antworten und Lernfortschritt bleiben nur auf deinem Gerät.</p>` : ""}</form></div>`;
+  count("/login", "Passwort-Seite");
   const f = $("form", m), pw = $("#lg-pw", m), err = $(".lg-err", m), btn = $("button", f);
   f.addEventListener("submit", async e => { e.preventDefault(); if (!pw.value) return; btn.disabled = true; btn.textContent = "Wird geprüft …"; err.textContent = "";
     let ok = false, key = null; try { key = await deriveKey(pw.value); ok = await keyOk(key); } catch(_){}
     if (!ok){ btn.disabled = false; btn.textContent = "Öffnen"; err.textContent = "Das Passwort stimmt nicht."; f.classList.remove("shake"); void f.offsetWidth; f.classList.add("shake"); pw.select(); return; }
-    CKEY = key; try { const raw = b64enc(await crypto.subtle.exportKey("raw", key)); ($("[data-rem]", f).checked ? localStorage : sessionStorage).setItem(KEY_STORE, raw); } catch(_){}
+    CKEY = key; count("anmeldung", "Anmeldung", true); try { const raw = b64enc(await crypto.subtle.exportKey("raw", key)); ($("[data-rem]", f).checked ? localStorage : sessionStorage).setItem(KEY_STORE, raw); } catch(_){}
     document.body.classList.remove("locked"); route(true); });
 }
+/* ---------- Anonyme Nutzungsstatistik (GoatCounter: ohne Cookies, ohne Personendaten) ---------- */
+const STATS = window.STATS || ""; let statsLast = "", statsQ = [], statsLoaded = false;
+const statsOn = () => !!STATS && location.protocol === "https:" && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+function count(path, title, event){
+  if (!statsOn()) return;
+  if (!event){ if (path === statsLast) return; statsLast = path; }
+  statsQ.push({path, title: title || path, event: !!event});
+  if (!statsLoaded){ statsLoaded = true; window.goatcounter = {no_onload: true};
+    const sc = document.createElement("script"); sc.async = true; sc.src = "https://gc.zgo.at/count.js"; sc.dataset.goatcounter = "https://" + STATS + ".goatcounter.com/count";
+    sc.onload = flushStats; document.head.appendChild(sc); }
+  else flushStats(); }
+function flushStats(){ if (!window.goatcounter || !window.goatcounter.count) return; while (statsQ.length) { try { window.goatcounter.count(statsQ.shift()); } catch(e){} } }
 const loadScript = src => new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = src; sc.onload = res; sc.onerror = () => rej(new Error("nicht gefunden")); document.head.appendChild(sc); });
 async function loadModule(id){
   if (REG[id]) return;
@@ -589,7 +602,7 @@ P.mix = (m, arg) => {
       const r = buildMix(cfg.lz, cfg.min, cfg);
       sum.innerHTML = `<div><p class="ms-big"><b>${r.nQ}</b> Aufgaben${r.nC ? ` + <b>${r.nC}</b> Karteikarten` : ""}</p><p class="small">aus ${cfg.lz.length} Lernziel${cfg.lz.length > 1 ? "en" : ""} · geschätzt ca. ${r.est} Minuten${r.exhausted && r.est < cfg.min - 2 ? ` · mehr Aufgaben gibt es zu dieser Auswahl nicht` : ""}</p></div><button class="btn train big" data-go ${r.items.length ? "" : "disabled"}>Übung starten</button>`;
       const go = $("[data-go]", sum); if (go) go.addEventListener("click", () => { const r2 = buildMix(cfg.lz, cfg.min, cfg); window.scrollTo(0, 0);
-        session(m, `Eigene Übung · ${cfg.min} Minuten`, r2.items, "#/mix", "mix", {minutes:cfg.min, again:"Neue Übung zusammenstellen"}); }); };
+        count("eigene-uebung", "Eigene Übung gestartet", true); session(m, `Eigene Übung · ${cfg.min} Minuten`, r2.items, "#/mix", "mix", {minutes:cfg.min, again:"Neue Übung zusammenstellen"}); }); };
     const setLz = list => { cfg.lz = list; draw(); };
     $$("[data-lz]", m).forEach(b => b.addEventListener("click", () => { const id = +b.dataset.lz; setLz(cfg.lz.includes(id) ? cfg.lz.filter(x => x !== id) : cfg.lz.concat(id)); }));
     $$("[data-th]", m).forEach(c => c.addEventListener("change", () => { const ids = D.themes[c.dataset.th].lz; setLz(c.checked ? Array.from(new Set(cfg.lz.concat(ids))) : cfg.lz.filter(x => !ids.includes(x))); }));
@@ -643,7 +656,7 @@ P.probe = (m) => {
       <div class="row"><label for="lim" class="small">Zeitlimit</label><select id="lim" class="plain">${opts.map(o => `<option value="${o}">${o ? o + " Minuten" : "kein Limit, Zeit nur mitzählen"}</option>`).join("")}</select></div>
       <p class="small muted">Mit Limit wird nach Ablauf automatisch abgegeben. Ohne Limit siehst du am Schluss, wie lange du gebraucht hast.</p>
       <div class="actions"><button class="btn" data-start>Probeprüfung starten</button></div></div>`;
-  $("[data-start]", m).addEventListener("click", () => runExam(m, +$("#lim", m).value));
+  $("[data-start]", m).addEventListener("click", () => { count("probepruefung", "Probeprüfung gestartet", true); runExam(m, +$("#lim", m).value); });
 };
 function runExam(m, limit){
   const parts = buildExam(); const TOT = parts.reduce((a, p) => a + p.p, 0);
@@ -962,14 +975,14 @@ async function route(force){
   document.body.classList.remove("locked");
   if (!parts.length || !MODS.find(x => x.id === parts[0])){
     if (parts.length && CUR && P[parts[0]]){ location.replace("#/" + CUR + "/" + parts.join("/")); return; }
-    CUR = null; m.className = ""; overview(m); window.scrollTo(0, 0); return; }
+    CUR = null; m.className = ""; overview(m); count("/", "Übersicht"); window.scrollTo(0, 0); return; }
   const id = parts[0];
   if (CUR !== id){ m.innerHTML = `<p class="muted">Modul wird geladen …</p>`;
     try { await loadModule(id); } catch(e){ m.innerHTML = `<div class="panel"><h2 style="margin-top:0">Modul konnte nicht geladen werden</h2><p>Die Datei «modules/${esc(id)}/content.js» fehlt oder ist fehlerhaft.</p><p><a href="#/" data-abs>Zurück zur Übersicht</a></p></div>`; return; }
     if (my !== routing) return; activate(id); }
   const page = parts[1] || "start", arg = parts[2], arg2 = parts[3]; m.className = ""; m.innerHTML = "";
   const act = page === "lz" ? "lz" + arg : page === "ueben" ? "lz" + arg : page === "quelle" ? "quellen" : page;
-  (P[page] || P.start)(m, arg, arg2); nav(act); if (!force || force === true) window.scrollTo(0, 0); m.focus({preventScroll:true});
+  (P[page] || P.start)(m, arg, arg2); nav(act); count("/" + id + "/" + page + (page === "lz" || page === "ueben" ? "/" + arg : ""), (D.meta.title || id) + ": " + page + (arg && (page === "lz" || page === "ueben") ? " " + arg : "")); if (!force || force === true) window.scrollTo(0, 0); m.focus({preventScroll:true});
 }
 document.addEventListener("click", e => { const a = e.target.closest('a[href^="#/"]'); if (!a || a.hasAttribute("data-abs") || !CUR) return; const h = a.getAttribute("href");
   if (h.startsWith("#/" + CUR + "/") || h === "#/" + CUR) return; e.preventDefault(); goHash(h); });

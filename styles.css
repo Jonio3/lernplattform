@@ -746,3 +746,4 @@ body.locked main{max-width:none;padding:0}
 .lg-card .btn{justify-content:center;margin-top:6px}
 .lg-err{min-height:1.4em;color:var(--bad);font-weight:600;font-size:.92rem}
 .lg-card.shake{animation:shake .35s}
+.lg-note{font-size:.78rem;color:var(--muted);margin-top:4px!important;line-height:1.4}
