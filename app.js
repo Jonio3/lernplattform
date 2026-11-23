@@ -223,7 +223,7 @@ function nav(active){
   const side = $(".side");
   const lzLink = l => { const st = lzStats(l.id).st; return `<a href="#/lz/${l.id}" class="${active === "lz" + l.id ? "active" : ""}"><span class="n">${l.id}</span><span style="flex:1">${esc(l.short)}</span><span class="dot ${st}" title="${stLabel[st]}"></span></a>`; };
   const it = (h, k, t, ico) => `<a href="#/${h}" class="${active === k ? "active" : ""}"><i class="ico ${ico}"></i>${t}</a>`;
-  side.innerHTML = `<a class="backmods" href="#/" data-abs>← Alle Lernmodule</a><div class="brand">${esc(D.meta.title)}<small>${esc(D.meta.examLabel)}</small></div>
+  side.innerHTML = `<a class="backmods" href="#/" data-abs>${ICO.grid}<span>Alle Lernmodule</span></a><div class="brand">${esc(D.meta.title)}<small>${esc(D.meta.examLabel)}</small></div>
   <nav class="nav">
     ${it("start", "start", "Start", "i-ink")}
     ${it("theorie", "theorie", "Gesamte Theorie", "i-learn")}
@@ -240,8 +240,8 @@ function nav(active){
     ${it("sichern", "sichern", "Fortschritt sichern", "i-off")}
     ${it("loesungen", "loesungen", "Alle Lösungen (Gegenlesen)", "i-off")}
   </nav>
-  <div class="foot">${esc(D.meta.srcLabel || "")}<br><button class="themebtn" data-theme>Darstellung: ${{auto:"automatisch", light:"hell", dark:"dunkel"}[THEME]}</button>${LOCK ? `<button class="themebtn" data-logout>Abmelden</button>` : ""}</div>`;
-  $("[data-theme]", side).addEventListener("click", () => { THEME = {auto:"light", light:"dark", dark:"auto"}[THEME]; try { localStorage.setItem(THEME_KEY, THEME); } catch(e){} applyTheme(); nav(active); });
+  <div class="foot">${esc(D.meta.srcLabel || "")}<br><button class="themebtn" data-themebtn>Darstellung: ${{auto:"automatisch", light:"hell", dark:"dunkel"}[THEME]}</button>${LOCK ? `<button class="themebtn" data-logout>Abmelden</button>` : ""}</div>`;
+  $("[data-themebtn]", side).addEventListener("click", () => { THEME = {auto:"light", light:"dark", dark:"auto"}[THEME]; try { localStorage.setItem(THEME_KEY, THEME); } catch(e){} applyTheme(); nav(active); });
   chrome(active);
 }
 /* ---------- Handy: Leiste oben, ausklappbares Menü, Navigationsleiste unten ---------- */
@@ -250,6 +250,7 @@ const ICO = {
   theorie:'<svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>',
   mix:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16.5 9.5"/></svg>',
   karten:'<svg viewBox="0 0 24 24"><rect x="7" y="3" width="13" height="15" rx="2"/><path d="M4 7v12a2 2 0 0 0 2 2h10"/></svg>',
+  grid:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>',
   mindmap:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="4.5" cy="5" r="2"/><circle cx="19.5" cy="5" r="2"/><circle cx="4.5" cy="19" r="2"/><circle cx="19.5" cy="19" r="2"/><path d="M9.8 9.8 6 6.4M14.2 9.8 18 6.4M9.8 14.2 6 17.6M14.2 14.2 18 17.6"/></svg>'
 };
 const menu = open => { document.body.classList.toggle("menu-open", !!open); const b = $(".mb-menu"); if (b) b.setAttribute("aria-expanded", !!open); };
@@ -262,7 +263,7 @@ function chrome(active){
   let pill = "";
   if (inMod){ const d = daysLeft(); pill = d > 1 ? `noch ${d} Tage` : d === 1 ? "morgen Prüfung" : d === 0 ? "heute Prüfung" : ""; }
   bar.innerHTML = `<button type="button" class="mb-menu" aria-label="Menü" aria-expanded="false"><span></span><span></span><span></span></button>
-    <div class="mb-t">${inMod ? `${esc(D.meta.title)}<small>${esc(D.meta.examLabel)}</small>` : "Lernplattform"}</div>${pill ? `<span class="mb-pill">${pill}</span>` : ""}`;
+    <div class="mb-t">${inMod ? `${esc(D.meta.title)}<small>${esc(D.meta.examLabel)}</small>` : "Lernplattform"}</div>${pill ? `<span class="mb-pill">${pill}</span>` : ""}${inMod ? `<a class="mb-home" href="#/" data-abs aria-label="Alle Lernmodule">${ICO.grid}<span>Module</span></a>` : ""}`;
   $(".mb-menu", bar).addEventListener("click", () => menu(!document.body.classList.contains("menu-open")));
   bn.hidden = !inMod;
   const grp = {heute:"mix", pruefen:"mix", probe:"mix", mix:"mix"}, on = grp[active] || active;
@@ -383,14 +384,14 @@ P.lz = (m, id) => {
   m.className = thc(l);
   m.innerHTML = `<div class="crumb"><a href="#/start">Start</a> / ${esc(D.themes[l.theme].name)}</div>
     <div class="lzhero"><span class="badge xl">${id}</span><div><h1>${esc(l.title)}</h1><div class="ziel">${esc(l.ziel)}</div>
-      <div class="row"><a class="btn train" href="#/ueben/${id}">Kapitel trainieren: ${qs.length} Fragen</a>${cards.length ? `<a class="btn try-b" href="#/karten/${id}-alle">${cards.length} Karteikarten</a>` : ""}<a class="btn sec" href="#/mindmap/${id}">In der Mindmap</a><span class="small muted">Stand: ${stLabel[st.st]}, ${st.done} von ${st.total} bearbeitet</span></div></div></div>
+      <div class="row"><a class="btn train" href="#/ueben/${id}">Lernziel trainieren: ${qs.length} Fragen</a>${cards.length ? `<a class="btn try-b" href="#/karten/${id}-alle">${cards.length} Karteikarten</a>` : ""}<a class="btn sec" href="#/mindmap/${id}">In der Mindmap</a><span class="small muted">Stand: ${stLabel[st.st]}, ${st.done} von ${st.total} bearbeitet</span></div></div></div>
     <p class="sect s-learn">Verstehen</p>
     <div class="kurz"><h2>Kurz erklärt</h2>${esc(l.kurz)}</div>
     <div class="lzmaps"></div>
     <details class="more" open><summary><span>Kernwissen: alles aus dem Skript zu diesem Lernziel</span><span class="tg"></span></summary><div class="kern">${l.kern}</div></details>
     ${(l.widgets || []).length ? `<p class="sect s-try">Ausprobieren</p>` : ""}<div class="wids"></div>
     <p class="sect s-train">Trainieren</p>
-    <div class="trainbox"><div><b>Kapitel trainieren</b><p>Alle ${qs.length} Fragen zu diesem Lernziel, ohne nachzuschauen. Danach zeigt die Station auf der Startseite, wie sicher du bist.</p></div><a class="btn train big" href="#/ueben/${id}">Jetzt trainieren</a></div>
+    <div class="trainbox"><div><b>Lernziel trainieren</b><p>Alle ${qs.length} Fragen zu diesem Lernziel, ohne nachzuschauen. Danach zeigt die Station auf der Startseite, wie sicher du bist.</p></div><a class="btn train big" href="#/ueben/${id}">Jetzt trainieren</a></div>
     <h3>Schnelltest: drei zufällige Fragen</h3><div class="quick"></div>
     <div class="row" style="margin-top:30px;justify-content:space-between">${id > 1 ? `<a class="link" href="#/lz/${id-1}">Lernziel ${id-1}</a>` : "<span></span>"}${lzById(id + 1) ? `<a class="link" href="#/lz/${id+1}">Lernziel ${id+1}</a>` : ""}</div>`;
   fillImgs(m);
@@ -415,7 +416,8 @@ P.heute = (m) => {
 function session(m, title, items, back, act, o){
   o = o || {};
   let i = 0, sum = 0, cnt = 0; const t0 = Date.now(), token = {};
-  m.__sess = token;
+  m.__sess = token; let pending = false;
+  GUARD = {on:() => pending && m.__sess === token, msg:"Übung verlassen? Deine angefangene Antwort geht verloren. Bereits bewertete Aufgaben bleiben gespeichert."};
   const mmss = ms => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
   const tick = () => { if (m.__sess !== token) return clearInterval(iv); const el = $("[data-timer]", m); if (!el) return;
     const left = o.minutes * 60e3 - (Date.now() - t0); el.textContent = left > 0 ? `noch ${mmss(left)} Min.` : `Zeit um (+${mmss(-left)})`; el.classList.toggle("over", left <= 0); };
@@ -429,10 +431,11 @@ function session(m, title, items, back, act, o){
     const it = items[i];
     m.innerHTML = `<div class="crumb"><a href="${back}" data-back>Zurück</a></div><h1>${esc(title)}</h1><div class="prog"><i style="width:${i / items.length * 100}%"></i></div><p class="small muted sess-info"><span>Aufgabe ${i+1} von ${items.length}</span>${o.minutes ? `<span class="timer" data-timer></span>` : ""}</p><div class="slot"></div><div class="actions"><button class="btn" data-next hidden>Weiter</button><button class="link" data-pass>Überspringen</button></div>`;
     backLink(); if (o.minutes) tick();
-    const slot = $(".slot", m), nb = $("[data-next]", m);
+    const slot = $(".slot", m), nb = $("[data-next]", m); pending = false;
+    slot.addEventListener("input", e => { if (e.target.matches("textarea, input[type=text]")) pending = !!e.target.value.trim(); });
     const ready = () => { nb.hidden = false; const sk = $("[data-pass]", m); if (sk) sk.remove(); nb.focus(); };
     if (it.card) slot.appendChild(cardEl(it.card, r => { i++; step(); }));
-    else slot.appendChild(Q(it.q, {lzTag:true, onScore:s => { sum += s; cnt++; ready(); }}).el);
+    else slot.appendChild(Q(it.q, {lzTag:true, onScore:s => { sum += s; cnt++; pending = false; ready(); }}).el);
     nb.addEventListener("click", () => { i++; step(); window.scrollTo(0, 0); });
     $("[data-pass]", m).addEventListener("click", () => { i++; step(); });
   };
@@ -685,7 +688,9 @@ function runExam(m, limit){
         gb.addEventListener("click", () => { g.remove(); c.el.hidden = false; }); sec.appendChild(g); }
       sec.appendChild(c.el); });
     wrap.appendChild(sec); });
-  const t0 = Date.now(); let used = 0, submitted = false;
+  const t0 = Date.now(); let used = 0, submitted = false, touched = false, finished = false;
+  ["input", "change"].forEach(ev => wrap.addEventListener(ev, () => { touched = true; }));
+  GUARD = {on:() => touched && !finished && document.body.contains(wrap), msg:"Probeprüfung wirklich verlassen? Deine Antworten und Bewertungen gehen verloren."};
   const mmss = ms => { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
   const tick = () => { const el = $("[data-time]", m); if (!el || submitted){ clearInterval(timer); return; } const el2 = Date.now() - t0;
     if (limit){ const left = limit * 60000 - el2; el.textContent = `Verbleibend: ${mmss(left)}`; el.classList.toggle("warn", left < 5 * 60000); if (left <= 0){ submit(true); } }
@@ -699,7 +704,7 @@ function runExam(m, limit){
     $("[data-time]", m).textContent = auto ? `Zeit abgelaufen (${limit} min)` : `Abgegeben nach ${mmss(used)}`;
     $$(".part .panel button", m).forEach(b => b.closest(".panel").remove()); ctls.forEach(c => { c.el.hidden = false; c.check(); }); const sb = $("[data-submit]", m); sb.textContent = "Abgegeben"; sb.disabled = true;
     $(".ex-act", m).insertAdjacentHTML("beforeend", `<button class="btn" data-final>Bewertung abschliessen</button>`);
-    $("[data-final]", m).addEventListener("click", ev => { ctls.forEach(c => c.finalize && c.finalize()); ev.target.remove(); total();
+    $("[data-final]", m).addEventListener("click", ev => { finished = true; ctls.forEach(c => c.finalize && c.finalize()); ev.target.remove(); total();
       let got = 0; ctls.forEach(c => got += (c.score || 0) * c.pts); const g = Math.round(got * 2) / 2; S.probe = {best:Math.max(g, (S.probe && S.probe.best) || 0), last:g, tot:TOT, n:((S.probe && S.probe.n) || 0) + 1}; save(); nav("probe"); });
     total(); if (auto) alert("Die Zeit ist abgelaufen. Die Prüfung wurde abgegeben."); window.scrollTo({top:0, behavior:"smooth"}); }
   $("[data-submit]", m).addEventListener("click", () => submit(false));
@@ -969,20 +974,25 @@ W.kette = (el, o) => { o = o || {q:"q12a", t:"Ereigniskette zum Sonderbundskrieg
 /* ---------- Übersicht aller Module ---------- */
 function overview(m){
   document.title = "Lernplattform";
-  $(".side").innerHTML = `<div class="brand">Lernplattform<small>BMS Gesundheit und Soziales</small></div><nav class="nav">${MODS.map(x => `<a href="#/${x.id}" data-abs><i class="ico i-learn"></i>${esc(x.title)}</a>`).join("")}</nav>
-    <div class="foot"><button class="themebtn" data-theme>Darstellung: ${{auto:"automatisch", light:"hell", dark:"dunkel"}[THEME]}</button>${LOCK ? `<button class="themebtn" data-logout>Abmelden</button>` : ""}</div>`;
-  $("[data-theme]").addEventListener("click", () => { THEME = {auto:"light", light:"dark", dark:"auto"}[THEME]; try { localStorage.setItem(THEME_KEY, THEME); } catch(e){} applyTheme(); overview(m); });
+  $(".side").innerHTML = `<div class="brand">Lernplattform<small>BMS Gesundheit und Soziales</small></div><nav class="nav">${MODS.map(x => `<a href="#/${x.id}" data-abs><i class="ico i-learn"></i>${esc(x.subject || x.title)}</a>`).join("")}</nav>
+    <div class="foot"><button class="themebtn" data-themebtn>Darstellung: ${{auto:"automatisch", light:"hell", dark:"dunkel"}[THEME]}</button>${LOCK ? `<button class="themebtn" data-logout>Abmelden</button>` : ""}</div>`;
+  $("[data-themebtn]", $(".side")).addEventListener("click", () => { THEME = {auto:"light", light:"dark", dark:"auto"}[THEME]; try { localStorage.setItem(THEME_KEY, THEME); } catch(e){} applyTheme(); overview(m); });
   chrome("");
   const today = new Date(); today.setHours(0,0,0,0);
   m.innerHTML = `<section class="hero"><h1>Lernplattform</h1><p class="lead">Wähle die Prüfung, für die du lernen willst. Jedes Modul speichert deinen Fortschritt separat.</p></section>
     <div class="modgrid">${MODS.map(x => { const d = Math.round((new Date(x.examDate + "T00:00:00") - today) / 864e5);
       const dt = d > 1 ? `noch ${d} Tage` : d === 1 ? "morgen" : d === 0 ? "heute" : "vorbei";
-      return `<a class="modcard ${d < 0 ? "past" : ""}" href="#/${x.id}" data-abs><span class="tag2">${esc(x.subject || "")}${x.test ? ` <i class="testflag">In Testphase</i>` : ""}</span><b>${esc(x.title)}</b><span>${esc(x.subtitle || "")}</span><em>${esc(x.examLabel)} · ${dt}</em></a>`; }).join("")}</div>`;
+      return `<a class="modcard ${d < 0 ? "past" : ""}" href="#/${x.id}" data-abs>${x.subject && x.subject !== x.title || x.test ? `<span class="tag2">${x.subject && x.subject !== x.title ? esc(x.title) : ""}${x.test ? ` <i class="testflag">In Testphase</i>` : ""}</span>` : ""}<b>${esc(x.subject || x.title)}</b><span>${esc(x.subtitle || "")}</span><em>${esc(x.examLabel)} · ${dt}</em></a>`; }).join("")}</div>`;
 }
 
 /* ---------- Router ---------- */
 let routing = 0;
+/* Schutz vor versehentlichem Verlassen: Seiten mit ungesicherten Eingaben setzen GUARD = {on:() => bool, msg}. */
+let GUARD = null, HERE = location.hash;
+window.addEventListener("beforeunload", e => { if (GUARD && GUARD.on()){ e.preventDefault(); e.returnValue = ""; } });
 async function route(force){
+  if (GUARD && GUARD.on() && !confirm(GUARD.msg)){ if (location.hash !== HERE) history.pushState(null, "", HERE || "#/"); return; }
+  GUARD = null; HERE = location.hash;
   const my = ++routing; menu(false); const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean); const m = $("main");
   if (LOCK && !CKEY){ if (!triedRestore){ triedRestore = true; if (await restoreKey()) return route(force); } login(m); return; }
   document.body.classList.remove("locked");
@@ -999,5 +1009,11 @@ async function route(force){
 }
 document.addEventListener("click", e => { const a = e.target.closest('a[href^="#/"]'); if (!a || a.hasAttribute("data-abs") || !CUR) return; const h = a.getAttribute("href");
   if (h.startsWith("#/" + CUR + "/") || h === "#/" + CUR) return; e.preventDefault(); goHash(h); });
-document.addEventListener("DOMContentLoaded", () => { applyTheme(); window.addEventListener("hashchange", () => route()); route(); });
+/* «Nach oben»-Knopf für lange Seiten (z. B. Gesamte Theorie) */
+function topBtn(){ const b = document.createElement("button"); b.type = "button"; b.className = "totop"; b.hidden = true; b.setAttribute("aria-label", "Nach oben");
+  b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg><span>Nach oben</span>`; document.body.appendChild(b);
+  b.addEventListener("click", () => window.scrollTo({top:0, behavior:"smooth"}));
+  const upd = () => { b.hidden = window.scrollY < 1200 || !!$(".mixsum") || document.body.classList.contains("locked"); };
+  window.addEventListener("scroll", upd, {passive:true}); window.addEventListener("hashchange", () => setTimeout(upd, 50)); }
+document.addEventListener("DOMContentLoaded", () => { applyTheme(); topBtn(); window.addEventListener("hashchange", () => route()); route(); });
 })();
