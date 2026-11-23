@@ -12,6 +12,8 @@ const pick = a => a[Math.floor(Math.random() * a.length)];
 const lzById = id => D.lz.find(l => l.id === id);
 const fmt = n => (Math.round(n * 2) / 2).toString().replace(".", ",");
 const TOUCH = !!(window.matchMedia && matchMedia("(pointer: coarse)").matches);
+const POOLS = {nennen:"Nennen + Beispiel", paar:"Begriffspaar erklären", bestimmen:"Bestimmen", fall:"Fallbeispiel", stellung:"Stellungnahme"};
+const qLabel = q => q.gtype === "stellung" ? (q.part === "b" ? "Empfehlung entwickeln" : "Beurteilen") : q.gtype === "fall" ? "Fallbeispiel" + (q.part ? ", Teil " + q.part : "") : POOLS[q.pool] || TYPES[q.t];
 const TYPES = {mc:"Multiple Choice", order:"Reihenfolge", match:"Zuordnen", gap:"Lückentext", open:"Offene Frage", tf:"Richtig oder falsch", term:"Fachbegriffe"};
 
 /* ---------- Speicher ---------- */
@@ -103,7 +105,7 @@ function Q(q, opt){
   const ctl = {q, score:null, final:false, el:document.createElement("div")};
   ctl.el.className = "q q-" + q.t;
   const finish = s => { ctl.score = s; if (!ctl.final){ ctl.final = true; if (!opt.noRecord && q.id) rec(q.id, s); } opt.onScore && opt.onScore(s, ctl); };
-  const head = `<div class="qh"><span class="qtype">${opt.num ? opt.num + ". " : ""}${TYPES[q.t]}${q.p ? " (" + q.p + " P.)" : ""}</span>${opt.lzTag && q.lz ? `<a class="qtype" href="#/lz/${q.lz}">Lernziel ${q.lz}</a>` : ""}</div>`;
+  const head = `<div class="qh"><span class="qtype">${opt.num ? opt.num + ". " : ""}${qLabel(q)}${q.p ? " (" + q.p + " P.)" : ""}</span>${opt.lzTag && q.lz ? `<a class="qtype" href="#/lz/${q.lz}">Lernziel ${q.lz}</a>` : ""}</div>`;
   const fb = (s, why) => { const cls = s >= 0.999 ? "ok" : s > 0 ? "part" : "no"; const t = s >= 0.999 ? "Richtig." : s > 0 ? "Teilweise richtig." : "Nicht richtig.";
     return `<div class="fb ${cls}"><b>${t}</b>${why ? esc(why) : ""}</div>`; };
   const checkBtn = () => opt.exam ? "" : `<div class="actions"><button class="btn" data-check>Prüfen</button></div>`;
@@ -157,13 +159,13 @@ function Q(q, opt){
       const b = $("[data-check]", ctl.el); if (b) b.remove(); finish(s); };
   }
   else if (q.t === "tf"){
-    ctl.el.innerHTML = head + `<p class="qtext">${esc(q.q)}</p><p class="hint">+½ Punkt pro richtigem Kreuz, −½ pro falschem, nicht unter 0. Lass leer, was du nicht weisst.</p>
+    ctl.el.innerHTML = head + `<p class="qtext">${esc(q.q)}</p><p class="hint">${D.meta.tfPenalty === false ? "½ Punkt pro richtiger Antwort." : "+½ Punkt pro richtigem Kreuz, −½ pro falschem, nicht unter 0. Lass leer, was du nicht weisst."}</p>
       <div class="tf">${q.items.map((it, i) => `<div class="tfrow" data-i="${i}"><span class="tfs">${String.fromCharCode(97 + i)}. ${esc(it.s)}</span><span class="tfb"><button type="button" data-v="r" aria-label="richtig">R</button><button type="button" data-v="f" aria-label="falsch">F</button></span></div>`).join("")}</div>` + checkBtn() + `<div class="out"></div>`;
     const sel = {};
     $$(".tfrow", ctl.el).forEach(row => $$("button", row).forEach(b => b.addEventListener("click", () => { if (ctl.final) return; const i = +row.dataset.i; sel[i] = sel[i] === b.dataset.v ? undefined : b.dataset.v; $$("button", row).forEach(x => x.classList.toggle("on", sel[i] === x.dataset.v)); })));
     ctl.check = () => { if (ctl.final) return; let p = 0; const max = q.items.length * 0.5;
       q.items.forEach((it, i) => { const row = $(`.tfrow[data-i="${i}"]`, ctl.el); const v = sel[i]; const right = it.r ? "r" : "f";
-        if (v) p += v === right ? 0.5 : -0.5; row.classList.add(!v ? "skip" : v === right ? "right" : "wrong");
+        if (v) p += v === right ? 0.5 : (D.meta.tfPenalty === false ? 0 : -0.5); row.classList.add(!v ? "skip" : v === right ? "right" : "wrong");
         row.insertAdjacentHTML("beforeend", `<div class="tfsol">${it.r ? "Richtig" : "Falsch"}${it.why ? ": " + esc(it.why) : ""}</div>`); });
       p = Math.max(0, p); const s = p / max; $(".out", ctl.el).innerHTML = fb(s, `${fmt(p)} von ${fmt(max)} Punkten.`); const b = $("[data-check]", ctl.el); if (b) b.remove(); finish(s); };
   }
@@ -175,7 +177,7 @@ function Q(q, opt){
       const s = right / q.items.length; $(".out", ctl.el).innerHTML = fb(s, `${right} von ${q.items.length} Fachbegriffen richtig.`); const b = $("[data-check]", ctl.el); if (b) b.remove(); finish(s); };
   }
   else if (q.t === "open"){
-    ctl.el.innerHTML = head + (q.case ? `<div class="case"><span class="lbl">Fallbeispiel</span>${esc(q.case)}</div>` : "") + `<p class="qtext">${esc(q.q)}</p><textarea placeholder="Schreibe deine Antwort hier, in ganzen Sätzen und mit Begründung."></textarea>` +
+    ctl.el.innerHTML = head + (q.case && !opt.noCase ? `<div class="case"><span class="lbl">${q.gtype === "stellung" ? "Aussage" : "Fallbeispiel"}</span>${esc(q.case)}</div>` : "") + `<p class="qtext">${esc(q.q)}</p><textarea placeholder="Schreibe deine Antwort hier, in ganzen Sätzen und mit Begründung."></textarea>` +
       (opt.exam ? "" : `<div class="actions"><button class="btn" data-reveal disabled>Musterlösung zeigen</button><button class="link" data-skip>Ich weiss es nicht, Lösung zeigen</button></div>`) + `<div class="out"></div>`;
     const ta = $("textarea", ctl.el), rb = $("[data-reveal]", ctl.el);
     if (rb) ta.addEventListener("input", () => { rb.disabled = ta.value.trim().length < 15; });
@@ -320,7 +322,9 @@ P.start = (m) => {
   const cards = {g:0, u:0, n:0, neu:0}; D.cards.forEach(c => { const r = lastR(c.id); if (!r) cards.neu++; else if (r === 3) cards.g++; else if (r === 2) cards.u++; else cards.n++; });
   const srcDone = D.sources.filter(s => (s.a && S.q[s.a.id]) || s.qs.some(q => S.q[q.id])).length;
   const exp = S.lastExport ? `Zuletzt gesichert: ${new Date(S.lastExport).toLocaleString("de-CH", {day:"numeric", month:"numeric", hour:"2-digit", minute:"2-digit"})}` : "Noch nie gesichert";
-  m.innerHTML = `<section class="hero"><p class="count"><span class="pill">${dt}</span></p><h1>${esc(D.meta.heroTitle)}</h1></section>
+  const tm = MODS.find(x => x.id === CUR) || {};
+  m.innerHTML = `<section class="hero"><p class="count"><span class="pill">${dt}</span>${tm.test ? ` <span class="testflag">In Testphase</span>` : ""}</p><h1>${esc(D.meta.heroTitle)}</h1></section>
+    ${tm.test ? `<div class="testnote"><b>Dieses Modul ist noch in der Testphase.</b> ${esc(tm.test)}</div>` : ""}
     <section class="stand"><div class="stand-h"><div><p class="muted small" style="margin:0">Dein Lernstand</p><p class="bigpct"><b>${pc("sicher")} %</b> sicher</p></div><p class="small muted" style="max-width:40ch;margin:0">Gezählt werden alle ${pr.total} Fragen, jeweils dein letzter Versuch. «Sicher» heisst mindestens 80 % richtig.</p></div>
       <div class="pbar">${[["sicher","ok"],["teil","warn"],["nicht","bad"],["offen","off"]].map(([k, c]) => pr[k] ? `<i class="pb-${c}" style="flex:${pr[k]}" title="${pc(k)} %"></i>` : "").join("")}</div>
       <div class="plegend"><span><i class="pb-ok"></i>sicher ${pc("sicher")} %</span><span><i class="pb-warn"></i>teilweise ${pc("teil")} %</span><span><i class="pb-bad"></i>nicht gekonnt ${pc("nicht")} %</span><span><i class="pb-off"></i>noch nicht bearbeitet ${pc("offen")} %</span></div>
@@ -634,13 +638,21 @@ const EXAM = {
   tf: n => distinctLz(D.questions.filter(q => q.t === "tf"), n).map(q => ({q, pts:q.items.length * 0.5})),
   term: n => distinctLz(D.questions.filter(q => q.t === "term"), n).map(q => ({q, pts:q.items.length * 0.5})),
   "case": n => distinctLz(D.questions.filter(q => q.case), n).map(q => ({q, pts:q.p})),
-  open: n => distinctLz(D.questions.filter(q => q.t === "open" && !q.case && !q.beg), n).map(q => ({q, pts:q.p}))
+  open: n => distinctLz(D.questions.filter(q => q.t === "open" && !q.case && !q.beg), n).map(q => ({q, pts:q.p})),
+  match: n => distinctLz(D.questions.filter(q => q.t === "match"), n).map(q => ({q, pts:q.pairs.length * 0.5})),
+  /* Aufgaben-Pool aus dem Prüfungsaufbau, z. B. pool:"nennen" */
+  pool: (n, p) => distinctLz(D.questions.filter(q => q.pool === p.pool), n).map(q => ({q, pts:p.pts || q.p || 1})),
+  /* Zusammengehörige Teilaufgaben (Fall a–e, Stellungnahme a–b) mit gemeinsamem Text */
+  set: (n, p) => { const grps = [...new Set(D.questions.filter(q => q.gtype === p.gtype).map(q => q.grp))]; const g = pick(grps);
+    return D.questions.filter(q => q.grp === g).sort((a, b) => (a.part || "").localeCompare(b.part || "")).map(q => ({q, pts:q.p, sub:q.part})); }
 };
 function buildExam(){ const parts = [];
   D.meta.exam.parts.forEach((p, i) => { const t = `Aufgabe ${i + 1}: ${p.t}`;
     if (p.k === "text"){ const ts = pick(D.sources.filter(s => s.type === "text")); parts.push({t, src:ts, items:ts.qs.slice(0, 2).map(q => ({q, pts:q.p}))}); }
     else if (p.k === "bild"){ const bs = pick(D.sources.filter(s => s.type === "bild" && !s.muster)); const bq = bs.qs.find(q => q.p === 3) || bs.qs[0]; parts.push({t, src:bs, gate:true, items:[{q:bs.a, pts:4}, {q:bq, pts:3}]}); }
-    else parts.push({t, items:EXAM[p.k](p.n || 1, p)}); });
+    else { let items = EXAM[p.k](p.n || 1, p); const used = new Set(parts.flatMap(x => x.items.map(it => it.q.id)));
+      for (let k = 0; k < 8 && items.some(it => used.has(it.q.id)); k++) items = EXAM[p.k](p.n || 1, p);
+      parts.push({t, items, shared: p.k === "set" && items[0] ? items[0].q.case : null, sharedLbl: p.gtype === "stellung" ? "Aussage" : "Fallbeispiel", no:i + 1}); } });
   parts.forEach(p => p.p = p.items.reduce((a, it) => a + it.pts, 0)); return parts; }
 P.probe = (m) => {
   const opts = [0, 30, 45, 60, 75, 90]; const X = D.meta.exam;
@@ -665,7 +677,8 @@ function runExam(m, limit){
   const wrap = $(".parts", m); const ctls = []; let n = 0;
   parts.forEach(p => { const sec = document.createElement("section"); sec.className = "part"; sec.innerHTML = `<h2>${esc(p.t)}<span>${fmt(p.p)} Punkte</span></h2>`;
     if (p.src){ const s = p.src; sec.insertAdjacentHTML("beforeend", `<p class="small muted">${esc(s.title)}. ${esc(s.meta)}</p>${s.type === "text" ? `<div class="qtext-src">${s.text}</div>` : `<figure class="fig srcimg"><img data-img="${s.img}" alt="${esc(s.title)}"></figure>`}`); fillImgs(sec); }
-    p.items.forEach((it, idx) => { const c = Q(it.q, {exam:true, num:++n, points:it.pts, onChange:total, onScore:total}); c.pts = it.pts; ctls.push(c);
+    if (p.shared) sec.insertAdjacentHTML("beforeend", `<div class="case"><span class="lbl">${p.sharedLbl}</span>${esc(p.shared)}</div>`);
+    p.items.forEach((it, idx) => { const c = Q(it.q, {exam:true, num:it.sub ? null : ++n, noCase:!!p.shared, points:it.pts, onChange:total, onScore:total}); c.pts = it.pts; ctls.push(c);
       if (p.gate && idx === 1){ const g = document.createElement("div"); g.className = "panel small"; g.innerHTML = `<p style="margin-top:0">Teil B erscheint, sobald du Teil A beantwortet hast, damit die Frage die Antwort nicht verrät.</p><button class="btn sec small" disabled>Teil B anzeigen</button>`;
         const prevTa = $("textarea", ctls[ctls.length - 2].el), gb = $("button", g); c.el.hidden = true;
         prevTa.addEventListener("input", () => { gb.disabled = prevTa.value.trim().length < 20; });
@@ -780,7 +793,7 @@ P.loesungen = (m) => {
     <div class="scorebox noprint"><span data-cnt></span><span class="row"><button class="btn sec small" data-txt style="background:var(--surface);color:var(--ink)">Anmerkungen als Textdatei speichern</button><button class="btn sec small" data-print style="background:var(--surface);color:var(--ink)">Drucken</button></span></div>
     <p class="small noprint">Springen zu: ${D.lz.map(l => `<a href="#lz${l.id}" data-jump>Lernziel ${l.id}</a>`).join(", ")}${D.sources.length ? `, <a href="#qq" data-jump>Quellen</a>` : ""}, <a href="#kk" data-jump>Karteikarten</a></p>`;
   D.lz.forEach(l => { html += `<h2 id="lz${l.id}">Lernziel ${l.id}: ${esc(l.title)}</h2>`;
-    D.questions.filter(q => q.lz === l.id).forEach(q => { html += reg(q.id, `LZ ${l.id}, ${TYPES[q.t]}${q.beg ? ", Begriff" : ""}: ${q.q}`, solHtml(q), `<p class="sol-q">${esc(q.q)}</p>`); }); });
+    D.questions.filter(q => q.lz === l.id).forEach(q => { html += reg(q.id, `LZ ${l.id}, ${qLabel(q)}${q.beg ? ", Begriff" : ""}${q.grp ? " (" + q.grp + ")" : ""}: ${q.q}`, solHtml(q), `<p class="sol-q">${esc(q.q)}</p>`); }); });
   if (D.sources.length) html += `<h2 id="qq">Quellenwerkstatt</h2>`;
   D.sources.forEach(sr => { let body = `<p class="small muted">${esc(sr.meta)}</p>`;
     if (D.aqua) body += `<p class="small"><b>A-Q-U-A:</b></p><ul class="small">${D.aqua.steps.map((st, i) => `<li><b>${st.n}:</b> ${esc(sr.aqua[i])}</li>`).join("")}</ul>`;
@@ -964,7 +977,7 @@ function overview(m){
   m.innerHTML = `<section class="hero"><h1>Lernplattform</h1><p class="lead">Wähle die Prüfung, für die du lernen willst. Jedes Modul speichert deinen Fortschritt separat.</p></section>
     <div class="modgrid">${MODS.map(x => { const d = Math.round((new Date(x.examDate + "T00:00:00") - today) / 864e5);
       const dt = d > 1 ? `noch ${d} Tage` : d === 1 ? "morgen" : d === 0 ? "heute" : "vorbei";
-      return `<a class="modcard ${d < 0 ? "past" : ""}" href="#/${x.id}" data-abs><span class="tag2">${esc(x.subject || "")}</span><b>${esc(x.title)}</b><span>${esc(x.subtitle || "")}</span><em>${esc(x.examLabel)} · ${dt}</em></a>`; }).join("")}</div>`;
+      return `<a class="modcard ${d < 0 ? "past" : ""}" href="#/${x.id}" data-abs><span class="tag2">${esc(x.subject || "")}${x.test ? ` <i class="testflag">In Testphase</i>` : ""}</span><b>${esc(x.title)}</b><span>${esc(x.subtitle || "")}</span><em>${esc(x.examLabel)} · ${dt}</em></a>`; }).join("")}</div>`;
 }
 
 /* ---------- Router ---------- */
