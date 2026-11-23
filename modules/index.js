@@ -12,8 +12,7 @@ window.MODULES = [
   "subject": "Soziologie",
   "subtitle": "Soziales Handeln, soziale Kontrolle und Abweichung",
   "examDate": "2026-11-26",
-  "examLabel": "Prüfung vom 26. November",
-  "test": "Inhalte und Fragen werden gerade noch geprüft. Wenn dir ein Fehler oder etwas Unklares auffällt, gib bitte Rückmeldung."
+  "examLabel": "Prüfung vom 26. November"
  },
  {
   "id": "sowi-p2",
