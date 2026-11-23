@@ -337,7 +337,7 @@ P.start = (m) => {
           <div class="sv"><span class="svn">2</span><div><b>Fortschritt weg?</b> «Datei laden», gesicherte Datei wählen.</div><span class="arrow" aria-hidden="true">➜</span></div></div>
         <div class="save-btns"><button class="btn save" data-exp>Fortschritt sichern</button><label class="btn sec load">Datei laden<input type="file" accept=".json,application/json" hidden data-imp></label><span class="small muted" data-msg>${exp}</span></div></div></section>
     <div class="cta">
-      <a class="c-train big" href="#/heute"><span class="tag2">Schnellcheck</span><b>12 Aufgaben, ca. 15 Minuten</b><span>Gemischt aus allen Lernzielen, Schwaches zuerst.</span><em>Jetzt starten</em></a>
+      <a class="c-train big" href="#/heute"><span class="tag2">Schnellcheck</span><b>5 Aufgaben, ca. 5 Minuten</b><span>Gemischt aus allen Lernzielen, Schwaches zuerst.</span><em>Jetzt starten</em></a>
       <a class="c-learn big" href="#/theorie"><span class="tag2">Gesamte Theorie</span><b>Hier kannst du alles nachlesen</b><span>Alle ${D.lz.length} Lernziele auf einer Seite, mit Suchfunktion.</span><em>Theorie öffnen</em></a>
       ${D.sources.length ? `<a class="c-src" href="#/quellen"><span class="tag2">Quellenwerkstatt</span><b>Bild- und Textquellen</b><span>Fast die Hälfte der Prüfungspunkte.</span><em>Quellen üben</em></a>` : `<a class="c-src" href="#/karten"><span class="tag2">Karteikarten</span><b>Begriffe festigen</b><span>Was du nicht weisst, kommt bald wieder.</span><em>Karten lernen</em></a>`}
       <a class="c-ink" href="#/probe"><span class="tag2">Probeprüfung</span><b>Prüfung simulieren</b><span>Wie echt, mit Zeitlimit nach Wahl.</span><em>Prüfung simulieren</em></a></div>
@@ -404,10 +404,12 @@ P.ueben = (m, id) => { id = +id; const l = lzById(id); if (!l) return P.start(m)
   session(m, `Lernziel ${id}: ${l.title}`, qs.slice().sort((a, b) => ord[a.t] - ord[b.t]).map(q => ({q})), `#/lz/${id}`, "lz" + id); };
 
 P.heute = (m) => {
-  const cards = shuffle(D.cards.filter(c => isDue(c.id))).slice(0, 4).map(c => ({card:c}));
+  const N = 5; /* Schnellcheck: 5 Aufgaben, davon höchstens eine Karteikarte */
+  const cards = shuffle(D.cards.filter(c => isDue(c.id))).slice(0, 1).map(c => ({card:c}));
   const pool = D.questions.map(q => ({q, w:!S.q[q.id] ? 2 : (1 - S.q[q.id].s) * 3 + (Date.now() - S.q[q.id].t > 864e5 ? 0.5 : 0)})).filter(x => x.w > 0.2);
   const chosen = []; const usedLz = {};
-  shuffle(pool).sort((a, b) => b.w - a.w).forEach(x => { if (chosen.length < 12 - cards.length && (usedLz[x.q.lz] || 0) < 2){ chosen.push({q:x.q}); usedLz[x.q.lz] = (usedLz[x.q.lz] || 0) + 1; } });
+  shuffle(pool).sort((a, b) => b.w - a.w).forEach(x => { if (chosen.length < N - cards.length && !usedLz[x.q.lz]){ chosen.push({q:x.q}); usedLz[x.q.lz] = (usedLz[x.q.lz] || 0) + 1; } });
+  pool.sort((a, b) => b.w - a.w).forEach(x => { if (chosen.length < N - cards.length && !chosen.some(c => c.q === x.q)) chosen.push({q:x.q}); });
   const items = shuffle(chosen.concat(cards));
   if (!items.length){ m.innerHTML = `<h1>Schnellcheck</h1><div class="panel">Alles sitzt. Mach eine <a href="#/probe">Probeprüfung</a> oder stelle dir eine <a href="#/mix">eigene Übung</a> zusammen.</div>`; return; }
   session(m, "Schnellcheck", items, "#/start", "heute");
